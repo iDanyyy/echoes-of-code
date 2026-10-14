@@ -1,6 +1,6 @@
 import React from 'react';
 import MarketOverview from './components/MarketOverview';
-import { Terminal, Cpu } from 'lucide-react';
+import { Cpu } from 'lucide-react';
 
 export default function App() {
   return (
@@ -16,7 +16,7 @@ export default function App() {
                 Echoes of Code
               </h1>
               <span className="text-xs text-cyber-green block tracking-tight">
-                Sim & Strategic Cyber Corporate Warfare v0.1
+                Sim &amp; Strategic Cyber Corporate Warfare v0.1
               </span>
             </div>
           </div>
@@ -32,7 +32,7 @@ export default function App() {
       </main>
 
       <footer className="border-t border-cyber-border py-4 text-center text-xs text-gray-600">
-        Echoes of Code &copy; {new Date().getFullYear()} — Built with React, Zustand & Tailwind CSS.
+        Echoes of Code © {new Date().getFullYear()} — Built with React, Zustand &amp; Tailwind CSS.
       </footer>
     </div>
   );
