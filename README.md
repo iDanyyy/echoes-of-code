@@ -40,12 +40,12 @@ The detailed direction is documented in [GDD_v3.0.md](./GDD_v3.0.md). [GDD.md](.
 
 The next milestone is to consolidate the core loop before adding more screens:
 
-- make the hourly tick the reliable source of time progression;
-- connect schedule activities to contracts, study and company work;
-- correct calendar, salary, overhead and contract accounting;
+- connect study to skill progression;
 - implement one complete product-development flow;
 - make market and competitor reactions affect the player;
 - add tests for the time engine and economy;
+- connect or clearly mark the R&D and keynote surfaces;
+- remove duplicate legacy modules;
 - remove or gate debug controls from normal gameplay.
 
 ## Known limitations
@@ -77,4 +77,3 @@ npm run build
 ## Repository notes
 
 Generated dependencies, build output, local environment files, logs, coverage data and private development notes are excluded through [.gitignore](./.gitignore).
-

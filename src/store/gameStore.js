@@ -188,7 +188,9 @@ export const useGameStore = create((set, get) => ({
   },
 
   tick: () => {
-    const { time, player, addLog, checkIntegrity, activeProjects, activeFreelance, employees, lawsuits, playerCompany, stocks, loans } = get();
+    const { time, player, gameOver, addLog, checkIntegrity, activeProjects, activeFreelance, employees, lawsuits, playerCompany, stocks, loans } = get();
+    if (gameOver) return;
+
     let nextHour = time.hour + 1;
     let nextDay = time.day;
     let nextMonth = time.month;
@@ -196,14 +198,27 @@ export const useGameStore = create((set, get) => ({
 
     if (nextHour >= 24) {
       nextHour = 0;
-      nextDay += 1;
+      if (nextDay >= 30) {
+        nextDay = 1;
+        if (nextMonth >= 12) {
+          nextMonth = 1;
+          nextYear += 1;
+        } else {
+          nextMonth += 1;
+        }
+      } else {
+        nextDay += 1;
+      }
     }
 
     const currentActivity = player.schedule[time.hour] || 'rest';
+    const isNewDay = nextHour === 0;
     let newFatigue = player.fatigue;
     let newHealth = player.health;
     let newStress = player.stress;
     let newEnergy = player.energy;
+    let newTrace = player.trace;
+    let newCriminalRecord = player.criminalRecord;
 
     const hasChair = get().inventory.some(i => i.id === 's2');
     const hasEspresso = get().inventory.some(i => i.id === 's3');
@@ -229,61 +244,77 @@ export const useGameStore = create((set, get) => ({
     }
 
     let updatedProjects = [...activeProjects];
-    let updatedFreelance = activeFreelance;
+    let updatedFreelance = activeFreelance ? { ...activeFreelance } : null;
     let earnedMoney = 0;
     let newMoney = player.money;
 
-    if (player.currentJobId) {
-      const jobObj = CORP_JOBS.find(j => j.id === player.currentJobId);
-      if (jobObj) {
-        earnedMoney += Math.floor(jobObj.salary / 30);
-      }
-    }
-
-    if (playerCompany) {
-      earnedMoney += Math.floor((playerCompany.marketShare * 200) / 30);
-    }
-
-    if (nextDay !== time.day) {
-      const officeTierObj = OFFICE_TIERS.find(o => o.id === player.workspaceTier) || OFFICE_TIERS[0];
-      const payroll = employees.reduce((sum, e) => sum + e.salary, 0);
-      const bugCosts = Math.floor(get().technicalDebt * 5);
-      const loanInterest = loans.reduce((sum, l) => sum + Math.floor((l.amount * l.interest) / 30), 0);
-      const dailyExpenses = officeTierObj.overhead + payroll + bugCosts + loanInterest;
-      
-      newMoney -= dailyExpenses;
-      newStress = Math.min(100, player.stress + 5);
-
-      const remainingProjects = [];
-      for (const proj of activeProjects) {
-        const remainingDays = proj.remainingDays - 1;
-        if (remainingDays <= 0) {
-          earnedMoney += proj.revenue;
-          addLog(`[PROJECT]: Finished "${proj.name}". Collected $${proj.revenue}.`);
-        } else {
-          remainingProjects.push({ ...proj, remainingDays });
+    if (currentActivity === 'work') {
+      const completedProjects = [];
+      updatedProjects = activeProjects.reduce((projects, project) => {
+        const remainingWorkHours = (project.remainingWorkHours ?? project.remainingDays * 8) - 1;
+        if (remainingWorkHours <= 0) {
+          completedProjects.push(project);
+          earnedMoney += project.revenue;
+          return projects;
         }
-      }
-      updatedProjects = remainingProjects;
+
+        projects.push({
+          ...project,
+          remainingWorkHours,
+          remainingDays: Math.ceil(remainingWorkHours / 8)
+        });
+        return projects;
+      }, []);
+
+      completedProjects.forEach(project => {
+        addLog(`[PROJECT]: Finished "${project.name}". Collected $${project.revenue}.`);
+      });
 
       if (updatedFreelance) {
-        const remainingDays = updatedFreelance.remainingDays - 1;
-        if (remainingDays <= 0) {
+        const remainingWorkHours = (updatedFreelance.remainingWorkHours ?? updatedFreelance.remainingDays * 8) - 1;
+        if (remainingWorkHours <= 0) {
           earnedMoney += updatedFreelance.pay;
-          newMoney += updatedFreelance.pay;
           if (updatedFreelance.traceGain) {
-            set(state => ({ player: { ...state.player, trace: Math.min(100, state.player.trace + updatedFreelance.traceGain), criminalRecord: state.player.criminalRecord + 1 } }));
+            newTrace = Math.min(100, newTrace + updatedFreelance.traceGain);
+            newCriminalRecord += 1;
             addLog(`[DARKNET]: Contract completed. Trace increased by ${updatedFreelance.traceGain}%.`);
           } else {
             addLog(`[FREELANCE]: Completed "${updatedFreelance.name}". Earned $${updatedFreelance.pay}.`);
           }
           updatedFreelance = null;
         } else {
-          updatedFreelance = { ...updatedFreelance, remainingDays };
+          updatedFreelance = {
+            ...updatedFreelance,
+            remainingWorkHours,
+            remainingDays: Math.ceil(remainingWorkHours / 8)
+          };
+        }
+      }
+    }
+
+    if (isNewDay) {
+      if (player.currentJobId) {
+        const jobObj = CORP_JOBS.find(j => j.id === player.currentJobId);
+        if (jobObj) {
+          earnedMoney += Math.round(jobObj.salary / 30);
         }
       }
 
-      if (nextDay % 30 === 1) {
+      if (playerCompany) {
+        earnedMoney += Math.round((playerCompany.marketShare * 200) / 30);
+      }
+
+      const officeTierObj = OFFICE_TIERS.find(o => o.id === player.workspaceTier) || OFFICE_TIERS[0];
+      const payroll = Math.round(employees.reduce((sum, e) => sum + e.salary, 0) / 30);
+      const bugCosts = Math.floor(get().technicalDebt * 5);
+      const rent = Math.round(officeTierObj.overhead / 30);
+      const loanInterest = Math.round(loans.reduce((sum, l) => sum + l.amount * l.interest, 0) / 30);
+      const dailyExpenses = rent + payroll + bugCosts + loanInterest;
+
+      newMoney -= dailyExpenses;
+      newStress = Math.min(100, player.stress + 5);
+
+      if (nextDay === 1 && nextMonth % 3 === 1) {
         let dividends = 0;
         stocks.forEach(st => {
           dividends += st.owned * st.dividend * 10;
@@ -294,15 +325,16 @@ export const useGameStore = create((set, get) => ({
         }
       }
 
-      newMoney += earnedMoney;
       addLog(`[DAY_UPDATE]: Day ${nextDay}. Expenses & Interest: -$${dailyExpenses}.`);
 
-      if (Math.random() < 0.15 && !lawsuits.length) {
+      if (playerCompany && Math.random() < 0.15 && !lawsuits.length) {
         const newLawsuit = { id: Date.now(), title: 'IP Patent Infringement', fine: 3500, daysLeft: 5 };
         set(state => ({ lawsuits: [...state.lawsuits, newLawsuit] }));
         addLog(`[LEGAL]: Lawsuit filed against your startup! Fine: $3500.`);
       }
     }
+
+    newMoney += earnedMoney;
 
     set({
       time: { ...time, hour: nextHour, day: nextDay, month: nextMonth, year: nextYear },
@@ -313,7 +345,9 @@ export const useGameStore = create((set, get) => ({
         fatigue: newFatigue,
         health: newHealth,
         stress: newStress,
-        energy: newEnergy
+        energy: newEnergy,
+        trace: newTrace,
+        criminalRecord: newCriminalRecord
       },
       activeProjects: updatedProjects,
       activeFreelance: updatedFreelance
@@ -322,9 +356,13 @@ export const useGameStore = create((set, get) => ({
     checkIntegrity();
   },
 
+  tickHour: () => {
+    get().tick();
+  },
+
   nextDay: () => {
     for (let i = 0; i < 24; i++) {
-      get().tick();
+      get().tickHour();
     }
   },
 
@@ -341,6 +379,8 @@ export const useGameStore = create((set, get) => ({
       id: Date.now(),
       name: `Contract Pipeline #${Math.floor(Math.random() * 8999 + 1000)}`,
       remainingDays: duration,
+      remainingWorkHours: duration * 8,
+      totalWorkHours: duration * 8,
       totalDays: duration,
       revenue
     };
@@ -357,7 +397,11 @@ export const useGameStore = create((set, get) => ({
   acceptFreelance: (contract) => {
     const { addLog } = get();
     set({
-      activeFreelance: { ...contract, remainingDays: contract.duration }
+      activeFreelance: {
+        ...contract,
+        remainingDays: contract.duration,
+        remainingWorkHours: contract.duration * 8
+      }
     });
     addLog(`[FREELANCE]: Accepted contract "${contract.name}". Duration: ${contract.duration} days.`);
   },
@@ -365,7 +409,11 @@ export const useGameStore = create((set, get) => ({
   acceptDarknet: (contract) => {
     const { addLog } = get();
     set({
-      activeFreelance: { ...contract, remainingDays: contract.duration }
+      activeFreelance: {
+        ...contract,
+        remainingDays: contract.duration,
+        remainingWorkHours: contract.duration * 8
+      }
     });
     addLog(`[DARKNET]: Accepted illegal contract "${contract.name}". High risk!`);
   },
