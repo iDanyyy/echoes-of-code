@@ -14,13 +14,37 @@ const INITIAL_COMPETITORS = [
   { id: 'c4', name: 'Omnicom Group', industry: 'Marketing & Design', marketShare: 28, hostility: 0 }
 ];
 
+export const INITIAL_STOCKS = [
+  { id: 'st1', symbol: 'GOOG', name: 'Google Corp', price: 150, owned: 0, dividend: 2 },
+  { id: 'st2', symbol: 'CRWD', name: 'CrowdStrike Sec', price: 95, owned: 0, dividend: 1.5 },
+  { id: 'st3', symbol: 'EA', name: 'EA Games', price: 120, owned: 0, dividend: 1.8 },
+  { id: 'st4', symbol: 'OMNI', name: 'Omnicom Group', price: 80, owned: 0, dividend: 1 },
+];
+
+export const OFFICE_TIERS = [
+  { id: 'Apartment', name: 'Rented Apartment', capacity: 1, overhead: 300, desc: 'Basic laptop setup' },
+  { id: 'Garage', name: 'Coworking / Garage', capacity: 3, overhead: 1200, desc: 'First hired developer space' },
+  { id: 'SmallOffice', name: 'Small Office', capacity: 10, overhead: 5000, desc: 'HR recruitment & breakroom' },
+  { id: 'MediumOffice', name: 'Medium Office', capacity: 35, overhead: 25000, desc: 'Legal Dept & PR studio' }
+];
+
+export const CORP_JOBS = [
+  { id: 'job1', industry: 'Web & Software', role: 'Junior Frontend Dev', salary: 1200, minSkill: 1, requiredSkillKey: 'frontend' },
+  { id: 'job2', industry: 'Web & Software', role: 'Senior React Architect', salary: 4500, minSkill: 4, requiredSkillKey: 'frontend' },
+  { id: 'job3', industry: 'Cyber Security & Networking', role: 'SecOps Analyst', salary: 2000, minSkill: 2, requiredSkillKey: 'cyber' },
+  { id: 'job4', industry: 'Game Development & 3D', role: 'Gameplay Scripter', salary: 2500, minSkill: 3, requiredSkillKey: 'backend' },
+  { id: 'job5', industry: 'Marketing & Design', role: 'UX Growth Lead', salary: 3000, minSkill: 3, requiredSkillKey: 'marketing' },
+];
+
 export const CODEX_ENTRIES = {
   'Technical Debt': 'Накопленные проблемы в коде из-за спешки. Чем выше долг, тем больше денег вы теряете на исправление багов каждый день.',
   'Trace Level': 'Ваш цифровой след. Если он достигнет 100%, вас вычислят власти. Снижается через операцию "Cover Tracks".',
   'Zero-Day Exploit': 'Атака на уязвимость, о которой разработчик еще не знает. Высокий риск, но очень эффективна.',
   'DDoS': 'Перегрузка серверов запросами. Средний риск, хорошо подходит для временного вывода конкурента из строя.',
   'Phishing': 'Обман сотрудников для получения доступа. Низкий риск, но требует времени на подготовку.',
-  'Market Share': 'Ваша доля рынка. Показывает, насколько ваша компания влиятельна по сравнению с конкурентами.'
+  'Market Share': 'Ваша доля рынка. Показывает, насколько ваша компания влиятельна по сравнению с конкурентами.',
+  'React': 'Visual UI builder for creating web application frontends rapidly.',
+  'Backend': 'The invisible server engine managing database storage and business rules.'
 };
 
 export const FREELANCE_CONTRACTS = [
@@ -29,6 +53,12 @@ export const FREELANCE_CONTRACTS = [
   { id: 'f3', tier: 2, name: 'REST API Integration', pay: 650, duration: 4, requiredSkill: 'backend', minLevel: 2, risk: 15 },
   { id: 'f4', tier: 2, name: 'React Dashboard SPA', pay: 1200, duration: 6, requiredSkill: 'frontend', minLevel: 2, risk: 20 },
   { id: 'f5', tier: 3, name: 'Banking Core Microservice', pay: 8500, duration: 12, requiredSkill: 'backend', minLevel: 4, risk: 40 },
+];
+
+export const DARKNET_CONTRACTS = [
+  { id: 'd1', name: 'Database Leak (Competitor)', pay: 2500, duration: 3, risk: 35, traceGain: 25 },
+  { id: 'd2', name: 'Ransomware Injection', pay: 6000, duration: 5, risk: 60, traceGain: 50 },
+  { id: 'd3', name: 'DDoS Attack on Rival', pay: 1500, duration: 2, risk: 20, traceGain: 15 },
 ];
 
 export const SHOP_ITEMS = [
@@ -43,11 +73,11 @@ export const useGameStore = create((set, get) => ({
     day: 1,
     month: 1,
     year: 2026,
-    speed: 1, // 0 = Pause, 1 = Normal, 2 = Fast
+    speed: 1,
   },
   player: {
     isFounder: false,
-    money: 1000,
+    money: 5000,
     energy: 100,
     health: 100,
     fatigue: 0,
@@ -65,15 +95,19 @@ export const useGameStore = create((set, get) => ({
   industries: INDUSTRIES,
   competitors: INITIAL_COMPETITORS,
   playerCompany: null,
-  logs: ['[SYSTEM_INIT]: Neural link established. Welcome to Echoes of Code (v2.5 Engine).'],
+  logs: ['[SYSTEM_INIT]: Neural link established. Phase 5 modules loaded.'],
   
   technicalDebt: 0,
   activeProjects: [],
   activeFreelance: null,
   inventory: [],
+  employees: [],
+  lawsuits: [],
+  stocks: INITIAL_STOCKS,
+  loans: [],
   
   hacking: {
-    step: 0, // 0: Idle, 1: Recon, 2: Execution, 3: Cover
+    step: 0,
     targetId: null,
     type: null,
     risk: 0
@@ -84,7 +118,7 @@ export const useGameStore = create((set, get) => ({
       time: { hour: 8, day: 1, month: 1, year: 2026, speed: 1 },
       player: { 
         isFounder: false, 
-        money: 1000, 
+        money: 5000, 
         energy: 100, 
         health: 100, 
         fatigue: 0, 
@@ -106,6 +140,10 @@ export const useGameStore = create((set, get) => ({
       activeProjects: [],
       activeFreelance: null,
       inventory: [],
+      employees: [],
+      lawsuits: [],
+      stocks: INITIAL_STOCKS,
+      loans: [],
       hacking: { step: 0, targetId: null, type: null, risk: 0 }
     });
   },
@@ -150,7 +188,7 @@ export const useGameStore = create((set, get) => ({
   },
 
   tick: () => {
-    const { time, player, addLog, checkIntegrity, activeProjects, activeFreelance } = get();
+    const { time, player, addLog, checkIntegrity, activeProjects, activeFreelance, employees, lawsuits, playerCompany, stocks, loans } = get();
     let nextHour = time.hour + 1;
     let nextDay = time.day;
     let nextMonth = time.month;
@@ -167,9 +205,12 @@ export const useGameStore = create((set, get) => ({
     let newStress = player.stress;
     let newEnergy = player.energy;
 
+    const hasChair = get().inventory.some(i => i.id === 's2');
+    const hasEspresso = get().inventory.some(i => i.id === 's3');
+
     if (currentActivity === 'sleep') {
-      newFatigue = Math.max(0, player.fatigue - 10);
-      newEnergy = Math.min(100, player.energy + 15);
+      newFatigue = Math.max(0, player.fatigue - (hasChair ? 12 : 10));
+      newEnergy = Math.min(100, player.energy + (hasEspresso ? 20 : 15));
     } else if (currentActivity === 'work') {
       newFatigue = Math.min(100, player.fatigue + 4);
       newEnergy = Math.max(0, player.energy - 6);
@@ -178,7 +219,6 @@ export const useGameStore = create((set, get) => ({
       newFatigue = Math.min(100, player.fatigue + 3);
       newEnergy = Math.max(0, player.energy - 4);
     } else {
-      // rest / personal
       newFatigue = Math.min(100, player.fatigue + 1);
       newEnergy = Math.max(0, player.energy - 2);
       newStress = Math.max(0, player.stress - 3);
@@ -193,9 +233,24 @@ export const useGameStore = create((set, get) => ({
     let earnedMoney = 0;
     let newMoney = player.money;
 
+    if (player.currentJobId) {
+      const jobObj = CORP_JOBS.find(j => j.id === player.currentJobId);
+      if (jobObj) {
+        earnedMoney += Math.floor(jobObj.salary / 30);
+      }
+    }
+
+    if (playerCompany) {
+      earnedMoney += Math.floor((playerCompany.marketShare * 200) / 30);
+    }
+
     if (nextDay !== time.day) {
+      const officeTierObj = OFFICE_TIERS.find(o => o.id === player.workspaceTier) || OFFICE_TIERS[0];
+      const payroll = employees.reduce((sum, e) => sum + e.salary, 0);
       const bugCosts = Math.floor(get().technicalDebt * 5);
-      const dailyExpenses = 50 + bugCosts;
+      const loanInterest = loans.reduce((sum, l) => sum + Math.floor((l.amount * l.interest) / 30), 0);
+      const dailyExpenses = officeTierObj.overhead + payroll + bugCosts + loanInterest;
+      
       newMoney -= dailyExpenses;
       newStress = Math.min(100, player.stress + 5);
 
@@ -216,15 +271,37 @@ export const useGameStore = create((set, get) => ({
         if (remainingDays <= 0) {
           earnedMoney += updatedFreelance.pay;
           newMoney += updatedFreelance.pay;
-          addLog(`[FREELANCE]: Completed "${updatedFreelance.name}". Earned $${updatedFreelance.pay}.`);
+          if (updatedFreelance.traceGain) {
+            set(state => ({ player: { ...state.player, trace: Math.min(100, state.player.trace + updatedFreelance.traceGain), criminalRecord: state.player.criminalRecord + 1 } }));
+            addLog(`[DARKNET]: Contract completed. Trace increased by ${updatedFreelance.traceGain}%.`);
+          } else {
+            addLog(`[FREELANCE]: Completed "${updatedFreelance.name}". Earned $${updatedFreelance.pay}.`);
+          }
           updatedFreelance = null;
         } else {
           updatedFreelance = { ...updatedFreelance, remainingDays };
         }
       }
 
+      if (nextDay % 30 === 1) {
+        let dividends = 0;
+        stocks.forEach(st => {
+          dividends += st.owned * st.dividend * 10;
+        });
+        if (dividends > 0) {
+          earnedMoney += dividends;
+          addLog(`[FINANCE]: Received monthly stock dividends: +$${dividends}.`);
+        }
+      }
+
       newMoney += earnedMoney;
-      addLog(`[DAY_UPDATE]: Day ${nextDay}. Expenses: -$${dailyExpenses}.`);
+      addLog(`[DAY_UPDATE]: Day ${nextDay}. Expenses & Interest: -$${dailyExpenses}.`);
+
+      if (Math.random() < 0.15 && !lawsuits.length) {
+        const newLawsuit = { id: Date.now(), title: 'IP Patent Infringement', fine: 3500, daysLeft: 5 };
+        set(state => ({ lawsuits: [...state.lawsuits, newLawsuit] }));
+        addLog(`[LEGAL]: Lawsuit filed against your startup! Fine: $3500.`);
+      }
     }
 
     set({
@@ -252,10 +329,13 @@ export const useGameStore = create((set, get) => ({
   },
 
   startProject: (speed, quality, security) => {
-    const { addLog, checkIntegrity } = get();
-    const debtGain = Math.max(0, (speed * 3) - quality - security);
-    const revenue = (speed * 100) + (quality * 50);
-    const duration = Math.max(1, Math.floor(11 - speed));
+    const { addLog, checkIntegrity, inventory } = get();
+    const hasWorkstation = inventory.some(i => i.id === 's1');
+    const effectiveSpeed = hasWorkstation ? speed + 1 : speed;
+
+    const debtGain = Math.max(0, (effectiveSpeed * 3) - quality - security);
+    const revenue = (effectiveSpeed * 100) + (quality * 50);
+    const duration = Math.max(1, Math.floor(11 - effectiveSpeed));
 
     const newProject = {
       id: Date.now(),
@@ -282,6 +362,14 @@ export const useGameStore = create((set, get) => ({
     addLog(`[FREELANCE]: Accepted contract "${contract.name}". Duration: ${contract.duration} days.`);
   },
 
+  acceptDarknet: (contract) => {
+    const { addLog } = get();
+    set({
+      activeFreelance: { ...contract, remainingDays: contract.duration }
+    });
+    addLog(`[DARKNET]: Accepted illegal contract "${contract.name}". High risk!`);
+  },
+
   buyShopItem: (item) => {
     const { player, inventory, addLog } = get();
     if (player.money < item.cost) {
@@ -293,6 +381,166 @@ export const useGameStore = create((set, get) => ({
       inventory: [...inventory, item]
     });
     addLog(`[SHOP]: Purchased ${item.name} for $${item.cost}.`);
+  },
+
+  acceptJob: (job) => {
+    const { player, addLog } = get();
+    if (player.criminalRecord > 0) {
+      addLog(`[HR]: Background check failed! Criminal record detected for ${job.role}.`);
+      return false;
+    }
+    if (player.skills[job.requiredSkillKey] < job.minSkill) {
+      addLog(`[HR]: Insufficient skill level for ${job.role}.`);
+      return false;
+    }
+    set({
+      player: {
+        ...player,
+        currentJobId: job.id,
+        currentRole: job.role
+      }
+    });
+    addLog(`[CAREER]: Hired as ${job.role}!`);
+    return true;
+  },
+
+  quitJob: () => {
+    const { addLog } = get();
+    set((state) => ({
+      player: {
+        ...state.player,
+        currentJobId: null,
+        currentRole: 'Unemployed'
+      }
+    }));
+    addLog(`[CAREER]: Resigned from corporate position.`);
+  },
+
+  foundCompany: (name, industry) => {
+    const { player, addLog } = get();
+    const COST = 2000;
+    if (player.money < COST) {
+      addLog(`[STARTUP]: Insufficient funds to incorporate ($${COST} required).`);
+      return false;
+    }
+    set({
+      player: {
+        ...player,
+        isFounder: true,
+        money: player.money - COST,
+        currentJobId: null,
+        currentRole: 'CEO'
+      },
+      playerCompany: {
+        name,
+        industry,
+        marketShare: 5
+      }
+    });
+    addLog(`[STARTUP]: Successfully incorporated "${name}" in ${industry}!`);
+    return true;
+  },
+
+  upgradeOffice: (tierId) => {
+    const { player, addLog } = get();
+    const tierObj = OFFICE_TIERS.find(o => o.id === tierId);
+    if (!tierObj) return;
+    const cost = 5000;
+    if (player.money < cost) {
+      addLog(`[OFFICE]: Insufficient funds to upgrade workspace.`);
+      return;
+    }
+    set(state => ({
+      player: { ...state.player, money: state.player.money - cost, workspaceTier: tierId }
+    }));
+    addLog(`[OFFICE]: Upgraded workspace to ${tierObj.name}.`);
+  },
+
+  hireEmployee: (role, salary) => {
+    const { employees, player, addLog } = get();
+    const tierObj = OFFICE_TIERS.find(o => o.id === player.workspaceTier) || OFFICE_TIERS[0];
+    if (employees.length >= tierObj.capacity) {
+      addLog(`[HR]: Office capacity reached! Upgrade workspace to hire more staff.`);
+      return;
+    }
+    const newEmp = { id: Date.now(), role, salary, loyalty: 100 };
+    set({ employees: [...employees, newEmp] });
+    addLog(`[HR]: Hired ${role} with salary $${salary}/mo.`);
+  },
+
+  resolveLawsuit: (id, payFine) => {
+    const { lawsuits, player, addLog } = get();
+    const lawsuit = lawsuits.find(l => l.id === id);
+    if (!lawsuit) return;
+
+    if (payFine) {
+      if (player.money < lawsuit.fine) {
+        addLog(`[LEGAL]: Insufficient funds to pay court settlement.`);
+        return;
+      }
+      set(state => ({
+        player: { ...state.player, money: state.player.money - lawsuit.fine },
+        lawsuits: state.lawsuits.filter(l => l.id !== id)
+      }));
+      addLog(`[LEGAL]: Settled lawsuit for $${lawsuit.fine}.`);
+    } else {
+      set(state => ({
+        lawsuits: state.lawsuits.filter(l => l.id !== id)
+      }));
+      addLog(`[LEGAL]: Fought lawsuit in court successfully.`);
+    }
+  },
+
+  buyStock: (stockId) => {
+    const { stocks, player, addLog } = get();
+    const stock = stocks.find(s => s.id === stockId);
+    if (!stock || player.money < stock.price) {
+      addLog(`[STOCK]: Insufficient funds to buy ${stock?.symbol}.`);
+      return;
+    }
+    set(state => ({
+      player: { ...state.player, money: state.player.money - stock.price },
+      stocks: state.stocks.map(s => s.id === stockId ? { ...s, owned: s.owned + 1 } : s)
+    }));
+    addLog(`[STOCK]: Purchased 1 share of ${stock.symbol} for $${stock.price}.`);
+  },
+
+  sellStock: (stockId) => {
+    const { stocks, addLog } = get();
+    const stock = stocks.find(s => s.id === stockId);
+    if (!stock || stock.owned <= 0) {
+      addLog(`[STOCK]: You do not own any shares of ${stock?.symbol}.`);
+      return;
+    }
+    set(state => ({
+      player: { ...state.player, money: state.player.money + stock.price },
+      stocks: state.stocks.map(s => s.id === stockId ? { ...s, owned: s.owned - 1 } : s)
+    }));
+    addLog(`[STOCK]: Sold 1 share of ${stock.symbol} for $${stock.price}.`);
+  },
+
+  takeLoan: (amount, interest) => {
+    const { loans, addLog } = get();
+    const newLoan = { id: Date.now(), amount, interest };
+    set(state => ({
+      player: { ...state.player, money: state.player.money + amount },
+      loans: [...loans, newLoan]
+    }));
+    addLog(`[BANK]: Secured commercial loan of $${amount} at ${interest * 100}% interest.`);
+  },
+
+  repayLoan: (loanId) => {
+    const { loans, player, addLog } = get();
+    const loan = loans.find(l => l.id === loanId);
+    if (!loan || player.money < loan.amount) {
+      addLog(`[BANK]: Insufficient funds to repay loan.`);
+      return;
+    }
+    set(state => ({
+      player: { ...state.player, money: state.player.money - loan.amount },
+      loans: state.loans.filter(l => l.id !== loanId)
+    }));
+    addLog(`[BANK]: Repaid loan of $${loan.amount}.`);
   },
 
   initiateHack: (targetId) => {
@@ -326,37 +574,6 @@ export const useGameStore = create((set, get) => ({
       addLog(`[HACK]: Failed! Trace increased.`);
     }
     checkIntegrity();
-  },
-
-  foundCompany: (name, industry) => {
-    if (get().gameOver) return;
-    const { player, addLog } = get();
-    const FOUNDATION_COST = 800;
-
-    if (player.money < FOUNDATION_COST) {
-      addLog(`[WARN]: Insufficient funds.`);
-      return false;
-    }
-
-    set((state) => ({
-      player: {
-        ...state.player,
-        isFounder: true,
-        money: state.player.money - FOUNDATION_COST,
-        currentJobId: null,
-        currentRole: 'CEO'
-      },
-      playerCompany: {
-        name: name.trim() || 'NeoTech Syndicate',
-        industry,
-        employees: [],
-        budget: 500,
-        marketShare: 3
-      }
-    }));
-
-    addLog(`[VENTURE]: Company "${name}" incorporated.`);
-    return true;
   },
 
   debugAddMoney: (amount = 1000) => {
