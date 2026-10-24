@@ -40,7 +40,6 @@ The detailed direction is documented in [GDD_v3.0.md](./GDD_v3.0.md). [GDD.md](.
 
 The next milestone is to consolidate the core loop before adding more screens:
 
-- connect study to skill progression;
 - implement one complete product-development flow;
 - make market and competitor reactions affect the player;
 - add tests for the time engine and economy;

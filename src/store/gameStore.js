@@ -67,6 +67,15 @@ export const SHOP_ITEMS = [
   { id: 's3', name: 'Espresso Machine', type: 'decor', cost: 600, bonus: 'Accelerates energy recovery during rest' },
 ];
 
+export const STUDY_SKILLS = [
+  { id: 'frontend', label: 'Frontend' },
+  { id: 'backend', label: 'Backend' },
+  { id: 'cyber', label: 'Cybersecurity' },
+  { id: 'management', label: 'Management' },
+  { id: 'law', label: 'Law & Compliance' },
+  { id: 'marketing', label: 'Marketing & PR' }
+];
+
 export const useGameStore = create((set, get) => ({
   time: {
     hour: 8,
@@ -85,6 +94,8 @@ export const useGameStore = create((set, get) => ({
     trace: 0,
     currentJobId: null,
     skills: { frontend: 1, backend: 0, cyber: 0, management: 0, law: 0, marketing: 0 },
+    studySkill: 'frontend',
+    studyProgress: { frontend: 0, backend: 0, cyber: 0, management: 0, law: 0, marketing: 0 },
     criminalRecord: 0,
     currentRole: 'Unemployed',
     workspaceTier: 'Apartment',
@@ -126,6 +137,8 @@ export const useGameStore = create((set, get) => ({
         trace: 0, 
         currentJobId: null,
         skills: { frontend: 1, backend: 0, cyber: 0, management: 0, law: 0, marketing: 0 },
+        studySkill: 'frontend',
+        studyProgress: { frontend: 0, backend: 0, cyber: 0, management: 0, law: 0, marketing: 0 },
         criminalRecord: 0,
         currentRole: 'Unemployed',
         workspaceTier: 'Apartment',
@@ -165,6 +178,17 @@ export const useGameStore = create((set, get) => ({
         }
       };
     });
+  },
+
+  setStudySkill: (skillId) => {
+    if (!STUDY_SKILLS.some(skill => skill.id === skillId)) return;
+
+    set((state) => ({
+      player: {
+        ...state.player,
+        studySkill: skillId
+      }
+    }));
   },
 
   checkIntegrity: () => {
@@ -219,6 +243,8 @@ export const useGameStore = create((set, get) => ({
     let newEnergy = player.energy;
     let newTrace = player.trace;
     let newCriminalRecord = player.criminalRecord;
+    const newSkills = { ...player.skills };
+    const newStudyProgress = { ...player.studyProgress };
 
     const hasChair = get().inventory.some(i => i.id === 's2');
     const hasEspresso = get().inventory.some(i => i.id === 's3');
@@ -233,6 +259,15 @@ export const useGameStore = create((set, get) => ({
     } else if (currentActivity === 'study') {
       newFatigue = Math.min(100, player.fatigue + 3);
       newEnergy = Math.max(0, player.energy - 4);
+      const studySkill = player.studySkill || 'frontend';
+      const currentProgress = (newStudyProgress[studySkill] || 0) + 25;
+      if (currentProgress >= 100) {
+        newSkills[studySkill] = Math.min(10, (newSkills[studySkill] || 0) + 1);
+        newStudyProgress[studySkill] = 0;
+        addLog(`[STUDY]: ${studySkill} skill increased to level ${newSkills[studySkill]}.`);
+      } else {
+        newStudyProgress[studySkill] = currentProgress;
+      }
     } else {
       newFatigue = Math.min(100, player.fatigue + 1);
       newEnergy = Math.max(0, player.energy - 2);
@@ -347,7 +382,9 @@ export const useGameStore = create((set, get) => ({
         stress: newStress,
         energy: newEnergy,
         trace: newTrace,
-        criminalRecord: newCriminalRecord
+        criminalRecord: newCriminalRecord,
+        skills: newSkills,
+        studyProgress: newStudyProgress
       },
       activeProjects: updatedProjects,
       activeFreelance: updatedFreelance

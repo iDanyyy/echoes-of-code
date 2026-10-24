@@ -1,4 +1,4 @@
-import { useGameStore } from '../store/gameStore';
+import { STUDY_SKILLS, useGameStore } from '../store/gameStore';
 import { Moon, Briefcase, BookOpen, Coffee, Clock } from 'lucide-react';
 
 const ACTIVITIES = [
@@ -9,7 +9,7 @@ const ACTIVITIES = [
 ];
 
 export default function SchedulePlanner() {
-  const { player, setScheduleHour, time, tickHour } = useGameStore();
+  const { player, setScheduleHour, setStudySkill, time, tickHour } = useGameStore();
   const schedule = player.schedule || Array(24).fill('sleep');
 
   const cycleActivity = (hour) => {
@@ -70,6 +70,27 @@ export default function SchedulePlanner() {
             </button>
           );
         })}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 border-t border-slate-800/70 pt-4">
+        <label htmlFor="study-skill" className="text-xs font-bold text-emerald-300">
+          Study focus:
+        </label>
+        <select
+          id="study-skill"
+          value={player.studySkill || 'frontend'}
+          onChange={(event) => setStudySkill(event.target.value)}
+          className="bg-slate-950 border border-emerald-800/70 rounded px-2 py-1.5 text-xs text-emerald-200"
+        >
+          {STUDY_SKILLS.map(skill => (
+            <option key={skill.id} value={skill.id}>{skill.label}</option>
+          ))}
+        </select>
+        <span className="text-xs text-slate-400">
+          Level {player.skills[player.studySkill || 'frontend'] || 0}
+          {' · '}
+          {(player.studyProgress?.[player.studySkill || 'frontend'] || 0)}% to next level
+        </span>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-slate-800/70 text-xs">
