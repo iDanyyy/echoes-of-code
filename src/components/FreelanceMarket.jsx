@@ -4,7 +4,16 @@ import { Briefcase, Skull, ShoppingCart, CheckCircle } from 'lucide-react';
 
 export default function FreelanceMarket() {
   const [subTab, setSubTab] = useState('freelance');
-  const { player, activeFreelance, acceptFreelance, acceptDarknet, buyShopItem, inventory } = useGameStore();
+  const {
+    player,
+    activeFreelance,
+    lastDeliveryFeedback,
+    acceptFreelance,
+    deliverFreelance,
+    acceptDarknet,
+    buyShopItem,
+    inventory
+  } = useGameStore();
 
   return (
     <div className="space-y-6">
@@ -25,12 +34,47 @@ export default function FreelanceMarket() {
       </div>
 
       {activeFreelance && (
-        <div className="p-4 bg-cyan-950/40 border border-cyan-800/60 rounded flex justify-between items-center text-xs">
+        <div className="p-4 bg-cyan-950/40 border border-cyan-800/60 rounded space-y-3 text-xs">
           <div>
             <span className="text-cyan-400 font-bold">ACTIVE CONTRACT: </span>
             <span className="text-white">{activeFreelance.name}</span>
+            <span className="text-slate-400"> · {activeFreelance.client}</span>
           </div>
-          <div className="text-slate-400">Zile rămase: {activeFreelance.remainingDays}</div>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span className="text-slate-400">
+              Progress: {activeFreelance.hoursWorked}/{activeFreelance.hoursRequired}h · Deadline: day {activeFreelance.deadlineDay}
+            </span>
+            <button
+              onClick={deliverFreelance}
+              disabled={activeFreelance.hoursWorked === 0}
+              className="rounded bg-emerald-700 px-3 py-1.5 font-bold text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Deliver project
+            </button>
+          </div>
+        </div>
+      )}
+
+      {lastDeliveryFeedback && (
+        <div className="space-y-3 rounded-lg border border-emerald-800/70 bg-emerald-950/20 p-5 text-xs shadow-lg">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="font-bold uppercase tracking-wide text-emerald-300">Client feedback</h3>
+            <span className="font-bold text-white">Payment received: ${lastDeliveryFeedback.payment}</span>
+          </div>
+          <p className="text-slate-200">
+            <span className="font-bold text-cyan-300">{lastDeliveryFeedback.client}</span>
+            {' · '}
+            {lastDeliveryFeedback.project}
+          </p>
+          <p className="rounded border border-slate-800 bg-slate-950/70 p-3 text-slate-300">
+            “{lastDeliveryFeedback.message}”
+          </p>
+          <div className="grid grid-cols-2 gap-2 text-slate-400 sm:grid-cols-4">
+            <span>Quality: <strong className="text-white">{lastDeliveryFeedback.quality}%</strong></span>
+            <span>Late: <strong className="text-white">{lastDeliveryFeedback.daysLate}d</strong></span>
+            <span>Penalty: <strong className="text-rose-300">-{lastDeliveryFeedback.latePenalty}%</strong></span>
+            <span>Trust: <strong className="text-amber-300">{lastDeliveryFeedback.trustChange}</strong></span>
+          </div>
         </div>
       )}
 
@@ -43,7 +87,9 @@ export default function FreelanceMarket() {
                   <h3 className="font-bold text-white text-sm flex items-center gap-2"><Briefcase className="w-4 h-4 text-cyan-400" /> {contract.name}</h3>
                   <span className="text-emerald-400 font-bold">${contract.pay}</span>
                 </div>
-                <p className="text-xs text-slate-400 mt-2">Durată: {contract.duration} zile | Skill: {contract.requiredSkill}</p>
+                <p className="text-xs text-slate-400 mt-2">
+                  Client: {contract.client} · {contract.duration} zile · Skill: {contract.requiredSkill}
+                </p>
               </div>
               <button
                 disabled={activeFreelance !== null}

@@ -48,11 +48,11 @@ export const CODEX_ENTRIES = {
 };
 
 export const FREELANCE_CONTRACTS = [
-  { id: 'f1', tier: 1, name: 'HTML Landing Page', pay: 120, duration: 2, requiredSkill: 'frontend', minLevel: 0, risk: 5 },
-  { id: 'f2', tier: 1, name: 'Fix CSS Bug in Legacy App', pay: 80, duration: 1, requiredSkill: 'frontend', minLevel: 0, risk: 2 },
-  { id: 'f3', tier: 2, name: 'REST API Integration', pay: 650, duration: 4, requiredSkill: 'backend', minLevel: 2, risk: 15 },
-  { id: 'f4', tier: 2, name: 'React Dashboard SPA', pay: 1200, duration: 6, requiredSkill: 'frontend', minLevel: 2, risk: 20 },
-  { id: 'f5', tier: 3, name: 'Banking Core Microservice', pay: 8500, duration: 12, requiredSkill: 'backend', minLevel: 4, risk: 40 },
+  { id: 'f1', tier: 1, client: 'Pixel Orchard', name: 'HTML Landing Page', pay: 120, duration: 2, requiredSkill: 'frontend', minLevel: 0, risk: 5, clientMood: 'kind' },
+  { id: 'f2', tier: 1, client: 'Northstar Labs', name: 'Fix CSS Bug in Legacy App', pay: 80, duration: 1, requiredSkill: 'frontend', minLevel: 0, risk: 2, clientMood: 'normal' },
+  { id: 'f3', tier: 2, client: 'Cloudline Systems', name: 'REST API Integration', pay: 650, duration: 4, requiredSkill: 'backend', minLevel: 2, risk: 15, clientMood: 'normal' },
+  { id: 'f4', tier: 2, client: 'Brightside Media', name: 'React Dashboard SPA', pay: 1200, duration: 6, requiredSkill: 'frontend', minLevel: 2, risk: 20, clientMood: 'demanding' },
+  { id: 'f5', tier: 3, client: 'Axiom Finance', name: 'Banking Core Microservice', pay: 8500, duration: 12, requiredSkill: 'backend', minLevel: 4, risk: 40, clientMood: 'demanding' },
 ];
 
 export const DARKNET_CONTRACTS = [
@@ -116,6 +116,7 @@ export const SCHEDULE_ACTIVITIES = [
     baseActivity: 'work',
     energyCost: 5,
     stressChange: 2,
+    contractActivity: true,
     color: 'sky'
   },
   {
@@ -207,6 +208,7 @@ export const useGameStore = create((set, get) => ({
   technicalDebt: 0,
   activeProjects: [],
   activeFreelance: null,
+  lastDeliveryFeedback: null,
   inventory: [],
   employees: [],
   lawsuits: [],
@@ -248,6 +250,7 @@ export const useGameStore = create((set, get) => ({
       technicalDebt: 0,
       activeProjects: [],
       activeFreelance: null,
+      lastDeliveryFeedback: null,
       inventory: [],
       employees: [],
       lawsuits: [],
@@ -282,9 +285,13 @@ export const useGameStore = create((set, get) => ({
     const activity = getActivityById(activityId);
     if (!activity || activity.id === 'sleep') return false;
 
-    const { player, addLog, activeProjects } = get();
+    const { player, addLog, activeProjects, activeFreelance } = get();
     if (activity.projectTaskId && activeProjects.length === 0) {
       addLog(`[SCHEDULE]: Start a project before scheduling "${activity.label}".`);
+      return false;
+    }
+    if (activity.contractActivity && !activeFreelance) {
+      addLog(`[SCHEDULE]: Accept a freelance contract before scheduling "${activity.label}".`);
       return false;
     }
     const schedule = player.schedule || createInitialSchedule();
@@ -405,6 +412,7 @@ export const useGameStore = create((set, get) => ({
     const scheduledActivityId = player.schedule[time.hour] || 'rest';
     const currentActivity = getBaseActivityId(scheduledActivityId);
     const currentProjectTask = getProjectTaskByActivityId(scheduledActivityId);
+    const isFreelanceHour = scheduledActivityId === 'freelance-css-fix';
     const isNewDay = nextHour === 0;
     let newFatigue = player.fatigue;
     let newHealth = player.health;
@@ -513,25 +521,20 @@ export const useGameStore = create((set, get) => ({
         addLog(`[PROJECT]: Finished "${project.name}". Collected $${project.revenue}.`);
       });
 
-      if (updatedFreelance) {
+      if (updatedFreelance && isFreelanceHour) {
+        updatedFreelance = {
+          ...updatedFreelance,
+          hoursWorked: Math.min(updatedFreelance.hoursRequired, updatedFreelance.hoursWorked + 1)
+        };
+      }
+
+      if (updatedFreelance && isFreelanceHour) {
         const remainingWorkHours = (updatedFreelance.remainingWorkHours ?? updatedFreelance.remainingDays * 8) - 1;
-        if (remainingWorkHours <= 0) {
-          earnedMoney += updatedFreelance.pay;
-          if (updatedFreelance.traceGain) {
-            newTrace = Math.min(100, newTrace + updatedFreelance.traceGain);
-            newCriminalRecord += 1;
-            addLog(`[DARKNET]: Contract completed. Trace increased by ${updatedFreelance.traceGain}%.`);
-          } else {
-            addLog(`[FREELANCE]: Completed "${updatedFreelance.name}". Earned $${updatedFreelance.pay}.`);
-          }
-          updatedFreelance = null;
-        } else {
-          updatedFreelance = {
-            ...updatedFreelance,
-            remainingWorkHours,
-            remainingDays: Math.ceil(remainingWorkHours / 8)
-          };
-        }
+        updatedFreelance = {
+          ...updatedFreelance,
+          remainingWorkHours,
+          remainingDays: Math.ceil(Math.max(0, remainingWorkHours) / 8)
+        };
       }
     }
 
@@ -644,15 +647,66 @@ export const useGameStore = create((set, get) => ({
   },
 
   acceptFreelance: (contract) => {
-    const { addLog } = get();
+    const { addLog, player, time } = get();
+    const deadlineDay = time.day + contract.duration;
     set({
       activeFreelance: {
         ...contract,
+        deadlineDay,
+        hoursRequired: contract.duration * 8,
+        hoursWorked: 0,
         remainingDays: contract.duration,
-        remainingWorkHours: contract.duration * 8
+        remainingWorkHours: contract.duration * 8,
+        clientTrust: 70,
+        status: 'active'
       }
     });
-    addLog(`[FREELANCE]: Accepted contract "${contract.name}". Duration: ${contract.duration} days.`);
+    addLog(`[FREELANCE]: Accepted "${contract.name}" for ${contract.client}. Deadline: day ${deadlineDay}.`);
+  },
+
+  deliverFreelance: () => {
+    const { activeFreelance, player, time, addLog } = get();
+    if (!activeFreelance) return false;
+
+    const quality = Math.min(100, Math.round((activeFreelance.hoursWorked / activeFreelance.hoursRequired) * 100));
+    const daysLate = Math.max(0, time.day - activeFreelance.deadlineDay);
+    const latePenalty = Math.min(80, daysLate * 8);
+    const qualityPenalty = quality < 70 ? 20 : quality < 90 ? 8 : 0;
+    const moodPenalty = activeFreelance.clientMood === 'demanding' && quality < 90 ? 8 : 0;
+    const trustChange = -(latePenalty + qualityPenalty + moodPenalty);
+    const payment = Math.max(0, Math.round(activeFreelance.pay * (1 - latePenalty / 100) * (quality < 50 ? 0.6 : quality < 80 ? 0.85 : 1)));
+    const feedback = {
+      id: Date.now(),
+      client: activeFreelance.client || 'Client',
+      project: activeFreelance.name,
+      quality,
+      daysLate,
+      payment,
+      promisedPay: activeFreelance.pay,
+      latePenalty,
+      trustChange,
+      message: daysLate > 0
+        ? `You delivered ${daysLate} day${daysLate === 1 ? '' : 's'} late.`
+        : quality < 70
+          ? 'The delivery arrived on time, but the quality is below expectations.'
+          : activeFreelance.clientMood === 'demanding' && quality < 90
+            ? 'The delivery works, but the client expected a more polished result.'
+            : 'The client accepted the delivery and praised the result.'
+    };
+
+    set(state => ({
+      player: {
+        ...state.player,
+        money: player.money + payment,
+        schedule: state.player.schedule.map(
+          activityId => activityId === 'freelance-css-fix' ? 'sleep' : activityId
+        )
+      },
+      activeFreelance: null,
+      lastDeliveryFeedback: feedback
+    }));
+    addLog(`[FREELANCE]: Delivered "${activeFreelance.name}" for $${payment}. Trust change: ${trustChange}.`);
+    return true;
   },
 
   acceptDarknet: (contract) => {
