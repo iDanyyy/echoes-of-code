@@ -42,7 +42,7 @@ export default function FreelanceMarket() {
           </div>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <span className="text-slate-400">
-              Progress: {activeFreelance.hoursWorked}/{activeFreelance.hoursRequired}h · Deadline: day {activeFreelance.deadlineDay}
+            Progress: {activeFreelance.hoursWorked}/{activeFreelance.hoursRequired}h · Quality: {activeFreelance.quality || 0}% · Deadline: day {activeFreelance.deadlineDay}
             </span>
             <button
               onClick={deliverFreelance}
@@ -74,6 +74,7 @@ export default function FreelanceMarket() {
             <span>Late: <strong className="text-white">{lastDeliveryFeedback.daysLate}d</strong></span>
             <span>Penalty: <strong className="text-rose-300">-{lastDeliveryFeedback.latePenalty}%</strong></span>
             <span>Trust: <strong className="text-amber-300">{lastDeliveryFeedback.trustChange}</strong></span>
+            <span>Reputation: <strong className={lastDeliveryFeedback.reputationChange >= 0 ? 'text-emerald-300' : 'text-rose-300'}>{lastDeliveryFeedback.reputationChange >= 0 ? '+' : ''}{lastDeliveryFeedback.reputationChange}</strong></span>
           </div>
         </div>
       )}
@@ -89,6 +90,9 @@ export default function FreelanceMarket() {
                 </div>
                 <p className="text-xs text-slate-400 mt-2">
                   Client: {contract.client} · {contract.duration} zile · Skill: {contract.requiredSkill}
+                </p>
+                <p className="mt-1 text-[10px] text-slate-500">
+                  Requirements: {Object.entries(contract.requiredOutput).map(([dimension, value]) => `${dimension} ${value}`).join(' · ')}
                 </p>
               </div>
               <button

@@ -64,6 +64,7 @@ export default function App() {
               <span className="text-rose-400 flex items-center gap-1"><Heart className="w-3.5 h-3.5" /> HEALTH: {player.health}%</span>
               <span className="text-orange-400">FATIGUE: {player.fatigue}%</span>
               <span className="text-yellow-400">STRESS: {player.stress}%</span>
+              <span className="text-blue-300">REPUTATION: {player.reputation ?? 0}</span>
               <span className="text-purple-400">TRACE: {player.trace}%</span>
               <span className="text-red-400">TECH DEBT: {technicalDebt}%</span>
             </div>

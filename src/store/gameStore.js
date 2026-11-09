@@ -194,6 +194,7 @@ export const useGameStore = create((set, get) => ({
     studySkill: 'frontend',
     studyProgress: { frontend: 0, backend: 0, cyber: 0, management: 0, law: 0, marketing: 0 },
     criminalRecord: 0,
+    reputation: 0,
     currentRole: 'Unemployed',
     workspaceTier: 'Apartment',
     schedule: createInitialSchedule(),
@@ -209,6 +210,7 @@ export const useGameStore = create((set, get) => ({
   activeProjects: [],
   activeFreelance: null,
   lastDeliveryFeedback: null,
+  feedbackJournal: [],
   inventory: [],
   employees: [],
   lawsuits: [],
@@ -238,6 +240,7 @@ export const useGameStore = create((set, get) => ({
         studySkill: 'frontend',
         studyProgress: { frontend: 0, backend: 0, cyber: 0, management: 0, law: 0, marketing: 0 },
         criminalRecord: 0,
+        reputation: 0,
         currentRole: 'Unemployed',
         workspaceTier: 'Apartment',
         schedule: createInitialSchedule()
@@ -251,6 +254,7 @@ export const useGameStore = create((set, get) => ({
       activeProjects: [],
       activeFreelance: null,
       lastDeliveryFeedback: null,
+      feedbackJournal: [],
       inventory: [],
       employees: [],
       lawsuits: [],
@@ -522,18 +526,36 @@ export const useGameStore = create((set, get) => ({
       });
 
       if (updatedFreelance && isFreelanceHour) {
-        updatedFreelance = {
-          ...updatedFreelance,
-          hoursWorked: Math.min(updatedFreelance.hoursRequired, updatedFreelance.hoursWorked + 1)
-        };
-      }
+        const requiredOutput = updatedFreelance.requiredOutput || { development: 1 };
+        const skillLevel = newSkills[updatedFreelance.requiredSkill] || 0;
+        const skillCoefficient = Math.min(1.5, 0.55 + skillLevel * 0.15);
+        const energyCoefficient = 0.7 + newEnergy / 333;
+        const stressCoefficient = Math.max(0.55, 1 - newStress / 250);
+        const outputCoefficient = skillCoefficient * energyCoefficient * stressCoefficient;
+        const progress = Object.entries(requiredOutput).reduce((result, [dimension, required]) => ({
+          ...result,
+          [dimension]: Math.min(
+            required,
+            (updatedFreelance.progress?.[dimension] || 0) + (required / updatedFreelance.hoursRequired) * outputCoefficient
+          )
+        }), { ...(updatedFreelance.progress || {}) });
+        const progressTotal = Object.entries(requiredOutput).reduce(
+          (total, [dimension, required]) => total + ((progress[dimension] || 0) / required),
+          0
+        );
+        const quality = Math.round((progressTotal / Object.keys(requiredOutput).length) * 100);
 
-      if (updatedFreelance && isFreelanceHour) {
         const remainingWorkHours = (updatedFreelance.remainingWorkHours ?? updatedFreelance.remainingDays * 8) - 1;
         updatedFreelance = {
           ...updatedFreelance,
+          hoursWorked: Math.min(updatedFreelance.hoursRequired, updatedFreelance.hoursWorked + 1),
           remainingWorkHours,
-          remainingDays: Math.ceil(Math.max(0, remainingWorkHours) / 8)
+          remainingDays: Math.ceil(Math.max(0, remainingWorkHours) / 8),
+          progress,
+          quality,
+          bugs: updatedFreelance.bugs + (
+            Math.random() < updatedFreelance.risk / 1000 * (1 + newStress / 100) ? 1 : 0
+          )
         };
       }
     }
@@ -573,6 +595,22 @@ export const useGameStore = create((set, get) => ({
 
       addLog(`[DAY_UPDATE]: Day ${nextDay}. Expenses & Interest: -$${dailyExpenses}.`);
 
+      if (updatedFreelance && nextDay >= updatedFreelance.deadlineDay) {
+        const daysLate = Math.max(0, nextDay - updatedFreelance.deadlineDay);
+        if (daysLate === 0) {
+          addLog(`[FREELANCE]: Deadline reached for "${updatedFreelance.name}". Deliver now or accept a penalty.`);
+        } else if (!updatedFreelance.deadlineNoticeSent) {
+          updatedFreelance = {
+            ...updatedFreelance,
+            deadlineNoticeSent: true,
+            daysLate
+          };
+          addLog(`[FREELANCE]: "${updatedFreelance.name}" is ${daysLate} day late. Payment penalties are active.`);
+        } else {
+          updatedFreelance = { ...updatedFreelance, daysLate };
+        }
+      }
+
       if (playerCompany && Math.random() < 0.15 && !lawsuits.length) {
         const newLawsuit = { id: Date.now(), title: 'IP Patent Infringement', fine: 3500, daysLeft: 5 };
         set(state => ({ lawsuits: [...state.lawsuits, newLawsuit] }));
@@ -594,6 +632,7 @@ export const useGameStore = create((set, get) => ({
         energy: newEnergy,
         trace: newTrace,
         criminalRecord: newCriminalRecord,
+        reputation: player.reputation,
         skills: newSkills,
         studyProgress: newStudyProgress
       },
@@ -662,7 +701,13 @@ export const useGameStore = create((set, get) => ({
         remainingDays: contract.duration,
         remainingWorkHours: contract.duration * 8,
         clientTrust: 70,
+        progress: Object.keys(contract.requiredOutput || { development: 1 }).reduce(
+          (progress, dimension) => ({ ...progress, [dimension]: 0 }),
+          {}
+        ),
         quality: 0,
+        bugs: 0,
+        daysLate: 0,
         status: 'active'
       }
     });
@@ -673,12 +718,13 @@ export const useGameStore = create((set, get) => ({
     const { activeFreelance, player, time, addLog } = get();
     if (!activeFreelance) return false;
 
-    const quality = Math.min(100, Math.round((activeFreelance.hoursWorked / activeFreelance.hoursRequired) * 100));
-    const daysLate = Math.max(0, time.day - activeFreelance.deadlineDay);
+    const quality = activeFreelance.quality || 0;
+    const daysLate = Math.max(activeFreelance.daysLate || 0, time.day - activeFreelance.deadlineDay);
     const latePenalty = Math.min(80, daysLate * 8);
     const qualityPenalty = quality < 70 ? 20 : quality < 90 ? 8 : 0;
     const moodPenalty = activeFreelance.clientMood === 'demanding' && quality < 90 ? 8 : 0;
     const trustChange = -(latePenalty + qualityPenalty + moodPenalty);
+    const reputationChange = quality >= 90 && daysLate === 0 ? 5 : quality < 70 || daysLate > 0 ? -3 : 1;
     const payment = Math.max(0, Math.round(activeFreelance.pay * (1 - latePenalty / 100) * (quality < 50 ? 0.6 : quality < 80 ? 0.85 : 1)));
     const feedback = {
       id: Date.now(),
@@ -690,6 +736,8 @@ export const useGameStore = create((set, get) => ({
       promisedPay: activeFreelance.pay,
       latePenalty,
       trustChange,
+      reputationChange,
+      bugs: activeFreelance.bugs || 0,
       message: daysLate > 0
         ? `You delivered ${daysLate} day${daysLate === 1 ? '' : 's'} late.`
         : quality < 70
@@ -703,12 +751,14 @@ export const useGameStore = create((set, get) => ({
       player: {
         ...state.player,
         money: player.money + payment,
+        reputation: player.reputation + reputationChange,
         schedule: state.player.schedule.map(
           activityId => activityId === 'freelance-css-fix' ? 'sleep' : activityId
         )
       },
       activeFreelance: null,
-      lastDeliveryFeedback: feedback
+      lastDeliveryFeedback: feedback,
+      feedbackJournal: [feedback, ...state.feedbackJournal].slice(0, 20)
     }));
     addLog(`[FREELANCE]: Delivered "${activeFreelance.name}" for $${payment}. Trust change: ${trustChange}.`);
     return true;
