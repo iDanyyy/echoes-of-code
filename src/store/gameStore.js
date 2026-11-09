@@ -48,11 +48,11 @@ export const CODEX_ENTRIES = {
 };
 
 export const FREELANCE_CONTRACTS = [
-  { id: 'f1', tier: 1, client: 'Pixel Orchard', name: 'HTML Landing Page', pay: 120, duration: 2, requiredSkill: 'frontend', minLevel: 0, risk: 5, clientMood: 'kind' },
-  { id: 'f2', tier: 1, client: 'Northstar Labs', name: 'Fix CSS Bug in Legacy App', pay: 80, duration: 1, requiredSkill: 'frontend', minLevel: 0, risk: 2, clientMood: 'normal' },
-  { id: 'f3', tier: 2, client: 'Cloudline Systems', name: 'REST API Integration', pay: 650, duration: 4, requiredSkill: 'backend', minLevel: 2, risk: 15, clientMood: 'normal' },
-  { id: 'f4', tier: 2, client: 'Brightside Media', name: 'React Dashboard SPA', pay: 1200, duration: 6, requiredSkill: 'frontend', minLevel: 2, risk: 20, clientMood: 'demanding' },
-  { id: 'f5', tier: 3, client: 'Axiom Finance', name: 'Banking Core Microservice', pay: 8500, duration: 12, requiredSkill: 'backend', minLevel: 4, risk: 40, clientMood: 'demanding' },
+  { id: 'f1', tier: 1, client: 'Pixel Orchard', name: 'HTML Landing Page', taskLabel: 'Build Landing Page', pay: 120, duration: 2, requiredSkill: 'frontend', minLevel: 0, risk: 5, clientMood: 'kind', requiredOutput: { development: 20, design: 15 } },
+  { id: 'f2', tier: 1, client: 'Northstar Labs', name: 'Fix CSS Bug in Legacy App', taskLabel: 'Fix CSS Bug', pay: 80, duration: 1, requiredSkill: 'frontend', minLevel: 0, risk: 2, clientMood: 'normal', requiredOutput: { development: 8, design: 10 } },
+  { id: 'f3', tier: 2, client: 'Cloudline Systems', name: 'REST API Integration', taskLabel: 'Implement REST API', pay: 650, duration: 4, requiredSkill: 'backend', minLevel: 2, risk: 15, clientMood: 'normal', requiredOutput: { development: 40, security: 15 } },
+  { id: 'f4', tier: 2, client: 'Brightside Media', name: 'React Dashboard SPA', taskLabel: 'Build React Dashboard', pay: 1200, duration: 6, requiredSkill: 'frontend', minLevel: 2, risk: 20, clientMood: 'demanding', requiredOutput: { development: 55, design: 35, security: 10 } },
+  { id: 'f5', tier: 3, client: 'Axiom Finance', name: 'Banking Core Microservice', taskLabel: 'Build Banking Service', pay: 8500, duration: 12, requiredSkill: 'backend', minLevel: 4, risk: 40, clientMood: 'demanding', requiredOutput: { development: 90, security: 60 } },
 ];
 
 export const DARKNET_CONTRACTS = [
@@ -647,7 +647,11 @@ export const useGameStore = create((set, get) => ({
   },
 
   acceptFreelance: (contract) => {
-    const { addLog, player, time } = get();
+    const { addLog, time, activeFreelance } = get();
+    if (activeFreelance) {
+      addLog('[FREELANCE]: Finish the active contract before accepting another.');
+      return false;
+    }
     const deadlineDay = time.day + contract.duration;
     set({
       activeFreelance: {
@@ -658,6 +662,7 @@ export const useGameStore = create((set, get) => ({
         remainingDays: contract.duration,
         remainingWorkHours: contract.duration * 8,
         clientTrust: 70,
+        quality: 0,
         status: 'active'
       }
     });

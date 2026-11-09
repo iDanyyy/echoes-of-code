@@ -28,8 +28,8 @@ function BriefcaseIcon({ className }) {
   return <span className={className} aria-hidden="true">▣</span>;
 }
 
-function getActivity(activityId) {
-  return SCHEDULE_ACTIVITIES.find(activity => activity.id === activityId) || SCHEDULE_ACTIVITIES[0];
+function getActivity(activityId, activities = SCHEDULE_ACTIVITIES) {
+  return activities.find(activity => activity.id === activityId) || SCHEDULE_ACTIVITIES[0];
 }
 
 function getRuns(schedule, startHour, endHour) {
@@ -48,7 +48,7 @@ function getRuns(schedule, startHour, endHour) {
   return runs;
 }
 
-function TimelineRow({ schedule, startHour, endHour, currentHour, onRemove }) {
+function TimelineRow({ schedule, startHour, endHour, currentHour, onRemove, activities }) {
   return (
     <div className="space-y-1">
       <div className="grid grid-cols-12 gap-1 text-[10px] text-slate-500">
@@ -59,7 +59,7 @@ function TimelineRow({ schedule, startHour, endHour, currentHour, onRemove }) {
       </div>
       <div className="grid grid-cols-12 gap-1 min-h-14">
         {getRuns(schedule, startHour, endHour).map(run => {
-          const activity = getActivity(run.activityId);
+          const activity = getActivity(run.activityId, activities);
           const styles = CATEGORY_STYLES[activity.category] || CATEGORY_STYLES.rest;
           const isCurrent = currentHour >= run.start && currentHour < run.start + run.duration;
 
@@ -92,6 +92,7 @@ export default function SchedulePlanner() {
   const {
     player,
     activeProjects,
+    activeFreelance,
     scheduleActivity,
     removeScheduledActivity,
     setStudySkill,
@@ -99,12 +100,29 @@ export default function SchedulePlanner() {
     tickHour
   } = useGameStore();
   const schedule = player.schedule || Array(24).fill('sleep');
-  const schedulableActivities = SCHEDULE_ACTIVITIES.filter(activity => (
-    activity.id !== 'sleep' && (!activity.projectTaskId || activeProjects.length > 0)
-  ));
   const scheduledIds = new Set(schedule.filter(activityId => activityId !== 'sleep'));
   const sleepHours = schedule.filter(activityId => activityId === 'sleep').length;
   const studySkill = player.studySkill || 'frontend';
+  const contractTask = activeFreelance
+    ? {
+      id: 'freelance-css-fix',
+      category: 'work',
+      label: activeFreelance.taskLabel || 'Contract Work',
+      duration: 2,
+      energyCost: 5,
+      stressChange: 2,
+      contractActivity: true,
+      color: 'sky'
+    }
+    : null;
+  const availableActivities = contractTask
+    ? SCHEDULE_ACTIVITIES.map(activity => activity.id === 'freelance-css-fix' ? contractTask : activity)
+    : SCHEDULE_ACTIVITIES;
+  const schedulableActivities = availableActivities.filter(activity => (
+    activity.id !== 'sleep' &&
+    (!activity.projectTaskId || activeProjects.length > 0) &&
+    (!activity.contractActivity || activeFreelance)
+  ));
 
   const categoryHours = schedulableActivities.reduce((totals, activity) => {
     const hours = schedule.filter(activityId => activityId === activity.id).length;
@@ -195,6 +213,7 @@ export default function SchedulePlanner() {
             endHour={12}
             currentHour={time.hour}
             onRemove={removeScheduledActivity}
+            activities={availableActivities}
           />
           <TimelineRow
             schedule={schedule}
@@ -202,6 +221,7 @@ export default function SchedulePlanner() {
             endHour={24}
             currentHour={time.hour}
             onRemove={removeScheduledActivity}
+            activities={availableActivities}
           />
         </div>
       </div>
