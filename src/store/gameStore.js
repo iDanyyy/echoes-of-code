@@ -76,6 +76,102 @@ export const STUDY_SKILLS = [
   { id: 'marketing', label: 'Marketing & PR' }
 ];
 
+export const SCHEDULE_ACTIVITIES = [
+  {
+    id: 'sleep',
+    category: 'rest',
+    label: 'Sleep',
+    duration: 1,
+    baseActivity: 'sleep',
+    energyCost: 0,
+    stressChange: -1,
+    color: 'indigo'
+  },
+  {
+    id: 'study-python',
+    category: 'study',
+    label: 'Study Python',
+    duration: 3,
+    baseActivity: 'study',
+    energyCost: 4,
+    stressChange: 1,
+    color: 'emerald'
+  },
+  {
+    id: 'project-landing-page',
+    category: 'work',
+    label: 'Landing Page',
+    duration: 3,
+    baseActivity: 'work',
+    energyCost: 6,
+    stressChange: 2,
+    projectTaskId: 'landing-page',
+    color: 'cyan'
+  },
+  {
+    id: 'freelance-css-fix',
+    category: 'work',
+    label: 'Fix CSS Bug',
+    duration: 2,
+    baseActivity: 'work',
+    energyCost: 5,
+    stressChange: 2,
+    color: 'sky'
+  },
+  {
+    id: 'walk',
+    category: 'health',
+    label: 'Walk Outside',
+    duration: 2,
+    baseActivity: 'rest',
+    energyCost: 2,
+    stressChange: -3,
+    color: 'amber'
+  },
+  {
+    id: 'movie',
+    category: 'rest',
+    label: 'Watch a Film',
+    duration: 2,
+    baseActivity: 'rest',
+    energyCost: 1,
+    stressChange: -4,
+    color: 'violet'
+  }
+];
+
+export const PROJECT_TASKS = [
+  {
+    id: 'landing-page',
+    label: 'Build Landing Page',
+    skill: 'frontend',
+    duration: 3,
+    outputPerHour: { development: 4, design: 2, security: 0 },
+    bugRisk: 0.04
+  },
+  {
+    id: 'css-fix',
+    label: 'Fix CSS Bug',
+    skill: 'frontend',
+    duration: 2,
+    outputPerHour: { development: 1, design: 4, security: 0 },
+    bugRisk: 0.02
+  }
+];
+
+const getActivityById = (activityId) =>
+  SCHEDULE_ACTIVITIES.find(activity => activity.id === activityId);
+
+const getBaseActivityId = (activityId) =>
+  getActivityById(activityId)?.baseActivity || activityId;
+
+const getProjectTaskByActivityId = (activityId) => {
+  const taskId = getActivityById(activityId)?.projectTaskId;
+  return PROJECT_TASKS.find(task => task.id === taskId);
+};
+
+const createInitialSchedule = () => Array(24).fill('sleep');
+
 export const useGameStore = create((set, get) => ({
   time: {
     hour: 8,
@@ -99,7 +195,7 @@ export const useGameStore = create((set, get) => ({
     criminalRecord: 0,
     currentRole: 'Unemployed',
     workspaceTier: 'Apartment',
-    schedule: Array(24).fill('sleep'),
+    schedule: createInitialSchedule(),
   },
   day: 1,
   gameOver: null,
@@ -142,7 +238,7 @@ export const useGameStore = create((set, get) => ({
         criminalRecord: 0,
         currentRole: 'Unemployed',
         workspaceTier: 'Apartment',
-        schedule: Array(24).fill('sleep')
+        schedule: createInitialSchedule()
       },
       day: 1,
       gameOver: null,
@@ -168,6 +264,8 @@ export const useGameStore = create((set, get) => ({
   },
 
   setScheduleHour: (hour, activity) => {
+    if (!Number.isInteger(hour) || hour < 0 || hour > 23) return;
+
     set((state) => {
       const newSchedule = [...state.player.schedule];
       newSchedule[hour] = activity;
@@ -178,6 +276,75 @@ export const useGameStore = create((set, get) => ({
         }
       };
     });
+  },
+
+  scheduleActivity: (activityId) => {
+    const activity = getActivityById(activityId);
+    if (!activity || activity.id === 'sleep') return false;
+
+    const { player, addLog, activeProjects } = get();
+    if (activity.projectTaskId && activeProjects.length === 0) {
+      addLog(`[SCHEDULE]: Start a project before scheduling "${activity.label}".`);
+      return false;
+    }
+    const schedule = player.schedule || createInitialSchedule();
+    const existingHours = schedule.reduce(
+      (hours, scheduledActivity, hour) => scheduledActivity === activityId ? [...hours, hour] : hours,
+      []
+    );
+
+    if (existingHours.length > 0) {
+      addLog(`[SCHEDULE]: "${activity.label}" is already scheduled.`);
+      return false;
+    }
+
+    let startHour = -1;
+    for (let hour = 0; hour <= schedule.length - activity.duration; hour += 1) {
+      const isAvailable = schedule
+        .slice(hour, hour + activity.duration)
+        .every(scheduledActivity => scheduledActivity === 'sleep');
+      if (isAvailable) {
+        startHour = hour;
+        break;
+      }
+    }
+
+    if (startHour < 0) {
+      addLog(`[SCHEDULE]: Not enough consecutive free hours for "${activity.label}".`);
+      return false;
+    }
+
+    const nextSchedule = [...schedule];
+    nextSchedule.fill(activity.id, startHour, startHour + activity.duration);
+    set(state => ({
+      player: {
+        ...state.player,
+        schedule: nextSchedule
+      }
+    }));
+    addLog(`[SCHEDULE]: Added "${activity.label}" for ${activity.duration}h.`);
+    return true;
+  },
+
+  removeScheduledActivity: (activityId) => {
+    const activity = getActivityById(activityId);
+    if (!activity || activity.id === 'sleep') return false;
+
+    const { player, addLog } = get();
+    const schedule = player.schedule || createInitialSchedule();
+    const hasActivity = schedule.some(scheduledActivity => scheduledActivity === activityId);
+    if (!hasActivity) return false;
+
+    set(state => ({
+      player: {
+        ...state.player,
+        schedule: state.player.schedule.map(
+          scheduledActivity => scheduledActivity === activityId ? 'sleep' : scheduledActivity
+        )
+      }
+    }));
+    addLog(`[SCHEDULE]: Removed "${activity.label}" from today's plan.`);
+    return true;
   },
 
   setStudySkill: (skillId) => {
@@ -235,7 +402,9 @@ export const useGameStore = create((set, get) => ({
       }
     }
 
-    const currentActivity = player.schedule[time.hour] || 'rest';
+    const scheduledActivityId = player.schedule[time.hour] || 'rest';
+    const currentActivity = getBaseActivityId(scheduledActivityId);
+    const currentProjectTask = getProjectTaskByActivityId(scheduledActivityId);
     const isNewDay = nextHour === 0;
     let newFatigue = player.fatigue;
     let newHealth = player.health;
@@ -284,8 +453,47 @@ export const useGameStore = create((set, get) => ({
     let newMoney = player.money;
 
     if (currentActivity === 'work') {
+      if (currentProjectTask) {
+        const skillLevel = newSkills[currentProjectTask.skill] || 0;
+        const skillCoefficient = Math.min(1.5, 0.55 + skillLevel * 0.15);
+        const energyCoefficient = 0.7 + newEnergy / 333;
+        const stressCoefficient = Math.max(0.55, 1 - newStress / 250);
+        const projectTaskOutput = Object.entries(currentProjectTask.outputPerHour).reduce(
+          (output, [dimension, points]) => ({
+            ...output,
+            [dimension]: Math.round(points * skillCoefficient * energyCoefficient * stressCoefficient * 10) / 10
+          }),
+          {}
+        );
+
+        updatedProjects = activeProjects.map(project => {
+          if (project.status === 'complete') return project;
+          const progress = {
+            ...project.progress,
+            development: Math.min(project.requirements.development, project.progress.development + (projectTaskOutput.development || 0)),
+            design: Math.min(project.requirements.design, project.progress.design + (projectTaskOutput.design || 0)),
+            security: Math.min(project.requirements.security, project.progress.security + (projectTaskOutput.security || 0))
+          };
+          const completed = Object.keys(project.requirements)
+            .every(dimension => progress[dimension] >= project.requirements[dimension]);
+          if (completed && project.status !== 'complete') {
+            addLog(`[PROJECT]: "${project.name}" reached its development requirements.`);
+          }
+          return {
+            ...project,
+            progress,
+            status: completed ? 'complete' : 'active',
+            bugs: project.bugs + (Math.random() < currentProjectTask.bugRisk * (1 + newStress / 100) ? 1 : 0)
+          };
+        });
+      }
+
       const completedProjects = [];
-      updatedProjects = activeProjects.reduce((projects, project) => {
+      updatedProjects = updatedProjects.reduce((projects, project) => {
+        if (project.progress) {
+          projects.push(project);
+          return projects;
+        }
         const remainingWorkHours = (project.remainingWorkHours ?? project.remainingDays * 8) - 1;
         if (remainingWorkHours <= 0) {
           completedProjects.push(project);
@@ -419,7 +627,11 @@ export const useGameStore = create((set, get) => ({
       remainingWorkHours: duration * 8,
       totalWorkHours: duration * 8,
       totalDays: duration,
-      revenue
+      revenue,
+      status: 'active',
+      requirements: { development: 50, design: 30, security: 30 },
+      progress: { development: 0, design: 0, security: 0 },
+      bugs: 0
     };
     
     set((state) => ({
