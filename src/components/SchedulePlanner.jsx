@@ -115,9 +115,10 @@ export default function SchedulePlanner() {
       color: 'sky'
     }
     : null;
-  const availableActivities = contractTask
-    ? SCHEDULE_ACTIVITIES.map(activity => activity.id === 'freelance-css-fix' ? contractTask : activity)
-    : SCHEDULE_ACTIVITIES;
+  const availableActivities = SCHEDULE_ACTIVITIES.map(activity => {
+    if (activity.id === 'freelance-css-fix' && contractTask) return contractTask;
+    return activity;
+  });
   const schedulableActivities = availableActivities.filter(activity => (
     activity.id !== 'sleep' &&
     (!activity.projectTaskId || activeProjects.length > 0) &&

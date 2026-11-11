@@ -561,13 +561,6 @@ export const useGameStore = create((set, get) => ({
     }
 
     if (isNewDay) {
-      if (player.currentJobId) {
-        const jobObj = CORP_JOBS.find(j => j.id === player.currentJobId);
-        if (jobObj) {
-          earnedMoney += Math.round(jobObj.salary / 30);
-        }
-      }
-
       if (playerCompany) {
         earnedMoney += Math.round((playerCompany.marketShare * 200) / 30);
       }
@@ -623,6 +616,8 @@ export const useGameStore = create((set, get) => ({
     set({
       time: { ...time, hour: nextHour, day: nextDay, month: nextMonth, year: nextYear },
       day: nextDay,
+      activeProjects: updatedProjects,
+      activeFreelance: updatedFreelance,
       player: {
         ...player,
         money: newMoney,
@@ -635,9 +630,7 @@ export const useGameStore = create((set, get) => ({
         reputation: player.reputation,
         skills: newSkills,
         studyProgress: newStudyProgress
-      },
-      activeProjects: updatedProjects,
-      activeFreelance: updatedFreelance
+      }
     });
 
     checkIntegrity();
@@ -719,32 +712,56 @@ export const useGameStore = create((set, get) => ({
     if (!activeFreelance) return false;
 
     const quality = activeFreelance.quality || 0;
+    const isComplete = activeFreelance.hoursWorked >= activeFreelance.hoursRequired;
     const daysLate = Math.max(activeFreelance.daysLate || 0, time.day - activeFreelance.deadlineDay);
+    const daysEarly = isComplete ? Math.max(0, activeFreelance.deadlineDay - time.day) : 0;
     const latePenalty = Math.min(80, daysLate * 8);
+    const speedBonus = daysLate === 0 ? Math.min(20, daysEarly * 5) : 0;
     const qualityPenalty = quality < 70 ? 20 : quality < 90 ? 8 : 0;
+    const bugPenalty = Math.min(30, (activeFreelance.bugs || 0) * 5);
     const moodPenalty = activeFreelance.clientMood === 'demanding' && quality < 90 ? 8 : 0;
-    const trustChange = -(latePenalty + qualityPenalty + moodPenalty);
+    const trustChange = -(latePenalty + qualityPenalty + bugPenalty + moodPenalty) + speedBonus;
     const reputationChange = quality >= 90 && daysLate === 0 ? 5 : quality < 70 || daysLate > 0 ? -3 : 1;
-    const payment = Math.max(0, Math.round(activeFreelance.pay * (1 - latePenalty / 100) * (quality < 50 ? 0.6 : quality < 80 ? 0.85 : 1)));
+    const qualityMultiplier = quality < 50 ? 0.6 : quality < 80 ? 0.85 : 1;
+    const paymentMultiplier = Math.max(
+      0,
+      1 + (speedBonus - latePenalty - bugPenalty - moodPenalty) / 100
+    );
+    const payment = Math.max(0, Math.round(activeFreelance.pay * qualityMultiplier * paymentMultiplier));
+    const feedbackReasons = [];
+    if (daysLate > 0) {
+      feedbackReasons.push(`You delivered ${daysLate} day${daysLate === 1 ? '' : 's'} late, so the client applied a ${latePenalty}% delay penalty.`);
+    } else if (daysEarly > 0) {
+      feedbackReasons.push(`You delivered ${daysEarly} day${daysEarly === 1 ? '' : 's'} early, earning a ${speedBonus}% speed bonus.`);
+    }
+    if (!isComplete) {
+      feedbackReasons.push('The delivery was incomplete because not all required hours were worked.');
+    }
+    if (quality < 70) {
+      feedbackReasons.push(`Quality was below expectations at ${quality}%, reducing the payment.`);
+    }
+    if (activeFreelance.bugs > 0) {
+      feedbackReasons.push(`${activeFreelance.bugs} bug${activeFreelance.bugs === 1 ? '' : 's'} caused a ${bugPenalty}% penalty.`);
+    }
+    if (feedbackReasons.length === 0) {
+      feedbackReasons.push('The client accepted the complete delivery and praised its quality.');
+    }
     const feedback = {
       id: Date.now(),
       client: activeFreelance.client || 'Client',
       project: activeFreelance.name,
       quality,
       daysLate,
+      daysEarly,
       payment,
       promisedPay: activeFreelance.pay,
       latePenalty,
+      speedBonus,
+      bugPenalty,
       trustChange,
       reputationChange,
       bugs: activeFreelance.bugs || 0,
-      message: daysLate > 0
-        ? `You delivered ${daysLate} day${daysLate === 1 ? '' : 's'} late.`
-        : quality < 70
-          ? 'The delivery arrived on time, but the quality is below expectations.'
-          : activeFreelance.clientMood === 'demanding' && quality < 90
-            ? 'The delivery works, but the client expected a more polished result.'
-            : 'The client accepted the delivery and praised the result.'
+      message: feedbackReasons.join(' ')
     };
 
     set(state => ({

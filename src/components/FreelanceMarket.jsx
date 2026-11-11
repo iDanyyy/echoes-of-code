@@ -42,7 +42,7 @@ export default function FreelanceMarket() {
           </div>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <span className="text-slate-400">
-            Progress: {activeFreelance.hoursWorked}/{activeFreelance.hoursRequired}h · Quality: {activeFreelance.quality || 0}% · Deadline: day {activeFreelance.deadlineDay}
+            Progress: {activeFreelance.hoursWorked}/{activeFreelance.hoursRequired}h · Quality: {activeFreelance.quality || 0}% · Bugs: {activeFreelance.bugs || 0} · Deadline: day {activeFreelance.deadlineDay}
             </span>
             <button
               onClick={deliverFreelance}
@@ -73,6 +73,8 @@ export default function FreelanceMarket() {
             <span>Quality: <strong className="text-white">{lastDeliveryFeedback.quality}%</strong></span>
             <span>Late: <strong className="text-white">{lastDeliveryFeedback.daysLate}d</strong></span>
             <span>Penalty: <strong className="text-rose-300">-{lastDeliveryFeedback.latePenalty}%</strong></span>
+            <span>Speed: <strong className="text-emerald-300">+{lastDeliveryFeedback.speedBonus || 0}%</strong></span>
+            <span>Bugs: <strong className="text-rose-300">-{lastDeliveryFeedback.bugPenalty || 0}%</strong></span>
             <span>Trust: <strong className="text-amber-300">{lastDeliveryFeedback.trustChange}</strong></span>
             <span>Reputation: <strong className={lastDeliveryFeedback.reputationChange >= 0 ? 'text-emerald-300' : 'text-rose-300'}>{lastDeliveryFeedback.reputationChange >= 0 ? '+' : ''}{lastDeliveryFeedback.reputationChange}</strong></span>
           </div>

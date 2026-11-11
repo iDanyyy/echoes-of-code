@@ -2,12 +2,10 @@ import { useState } from 'react';
 import { useGameStore } from './store/gameStore';
 import MarketOverview from './components/MarketOverview';
 import CodexModal from './components/CodexModal';
-import FreelanceMarket from './components/FreelanceMarket';
-import CareerPortal from './components/CareerPortal';
-import StartupHQ from './components/StartupHQ';
 import FinancialCenter from './components/FinancialCenter';
 import SchedulePlanner from './components/SchedulePlanner';
 import ResearchLab from './components/ResearchLab';
+import WorkHub from './components/WorkHub';
 import { Cpu, Terminal, ShieldAlert, Briefcase, Play, AlertTriangle, Bug, Shield, Zap, Activity, Clock, Heart, Battery } from 'lucide-react';
 
 export default function App() {
@@ -40,13 +38,15 @@ export default function App() {
         </div>
       )}
 
-      <div className="fixed bottom-36 right-4 z-50 bg-slate-900/90 border border-yellow-500/50 p-2 rounded shadow-lg flex gap-2 items-center text-xs">
-        <Bug className="w-4 h-4 text-yellow-400" />
-        <span className="text-yellow-400 font-bold">DEBUG:</span>
-        <button onClick={() => debugAddMoney(1000)} className="bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded text-cyan-300">+$1000</button>
-        <button onClick={() => debugReduceStress(50)} className="bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded text-cyan-300">-50 Stress</button>
-        <button onClick={resetGame} className="bg-red-900/50 hover:bg-red-800 px-2 py-1 rounded text-red-300">Reset</button>
-      </div>
+      {import.meta.env.DEV && (
+        <div className="fixed bottom-36 right-4 z-50 bg-slate-900/90 border border-yellow-500/50 p-2 rounded shadow-lg flex gap-2 items-center text-xs">
+          <Bug className="w-4 h-4 text-yellow-400" />
+          <span className="text-yellow-400 font-bold">DEBUG:</span>
+          <button onClick={() => debugAddMoney(1000)} className="bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded text-cyan-300">+$1000</button>
+          <button onClick={() => debugReduceStress(50)} className="bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded text-cyan-300">-50 Stress</button>
+          <button onClick={resetGame} className="bg-red-900/50 hover:bg-red-800 px-2 py-1 rounded text-red-300">Reset</button>
+        </div>
+      )}
 
       <header className="p-4 border-b border-slate-800 bg-slate-900 flex flex-wrap justify-between items-center gap-4">
         <div className="flex items-center gap-3">
@@ -88,9 +88,7 @@ export default function App() {
           { id: 'projects', label: 'PROJECTS ENGINE' },
           { id: 'schedule', label: '24H SCHEDULE' },
           { id: 'finance', label: 'FINANCIAL CENTER' },
-          { id: 'startup', label: 'STARTUP HQ & LEGAL' },
-          { id: 'career', label: 'CORP CAREER & HR' },
-          { id: 'freelance', label: 'FREELANCE & SHOP' },
+          { id: 'work', label: 'WORK HUB' },
           { id: 'research', label: 'R&D LAB & TECH' },
           { id: 'hacking', label: 'HACKING & OPERATIONS' },
           { id: 'market', label: 'MARKET INTELLIGENCE' }
@@ -199,14 +197,7 @@ export default function App() {
 
         {activeTab === 'schedule' && <SchedulePlanner />}
         {activeTab === 'finance' && <FinancialCenter />}
-        {activeTab === 'startup' && <StartupHQ />}
-        {activeTab === 'career' && <CareerPortal />}
-
-        {activeTab === 'freelance' && (
-          <div className="bg-slate-900 p-6 rounded-lg border border-slate-800 shadow-xl">
-            <FreelanceMarket />
-          </div>
-        )}
+        {activeTab === 'work' && <WorkHub />}
 
         {activeTab === 'research' && <ResearchLab />}
 
